@@ -4,6 +4,12 @@
   "y": 0,
   "uniqueID": "id-2554",
   "name": "WindowProject",
+  "ioValues": [
+    {
+      "name": "Input",
+      "ioValue": 10
+    }
+  ],
   "topLevel": true,
   "allAtoms": [
     {
@@ -2167,15 +2173,70 @@
     },
     {
       "atomType": "Code",
-      "x": 0.4537760416666667,
+      "x": 0.5221354166666666,
       "y": 0.511904761904762,
       "uniqueID": "id-3191",
+      "ioValues": [
+        {
+          "name": "teeth1",
+          "ioValue": 5
+        },
+        {
+          "name": "teeth2",
+          "ioValue": 5
+        },
+        {
+          "name": "pitch",
+          "ioValue": 10
+        }
+      ],
       "interpreterVersion": 1,
       "code": "function run(teeth1: number, teeth2: number, pitch: number, internal: boolean = false) {\n  // External mesh: centers separated by (D1 + D2)/2\n  // Internal mesh (ring + pinion): centers separated by (D_ring − D_pinion)/2\n  const sign = internal ? -1 : 1;\n  return ((teeth1 + sign * teeth2) * pitch) / (2 * Math.PI);\n}",
       "compiledCode": "\"use strict\";\nfunction run(teeth1, teeth2, pitch, internal = false) {\n    // External mesh: centers separated by (D1 + D2)/2\n    // Internal mesh (ring + pinion): centers separated by (D_ring − D_pinion)/2\n    const sign = internal ? -1 : 1;\n    return ((teeth1 + sign * teeth2) * pitch) / (2 * Math.PI);\n}\n"
+    },
+    {
+      "atomType": "Input",
+      "x": 0.025384615384615384,
+      "y": 0.36904761904761907,
+      "uniqueID": "id-3200"
+    },
+    {
+      "atomType": "Equation",
+      "x": 0.3313802083333333,
+      "y": 0.4107142857142857,
+      "uniqueID": "id-3203",
+      "name": "x / 2",
+      "ioValues": [
+        {
+          "name": "x",
+          "ioValue": 10
+        }
+      ],
+      "currentEquation": "x / 2"
     }
   ],
-  "allConnectors": [],
+  "allConnectors": [
+    {
+      "ap2Name": "x",
+      "ap1ID": "id-3200",
+      "ap2ID": "id-3203"
+    },
+    {
+      "ap2Name": "pitch",
+      "ap1ID": "id-3200",
+      "ap2ID": "id-3191"
+    },
+    {
+      "ap2Name": "teeth1",
+      "ap1ID": "id-3203",
+      "ap2ID": "id-3191"
+    },
+    {
+      "ap2Name": "teeth2",
+      "ap1ID": "id-3203",
+      "ap2ID": "id-3191"
+    }
+  ],
   "unitsKey": "Inches",
   "fileTypeVersion": 1,
   "filetypeVersion": 1
