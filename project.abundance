@@ -25,6 +25,346 @@
       ]
     },
     {
+      "atomType": "Code",
+      "x": 0.4466145833333333,
+      "y": 0.45833333333333337,
+      "uniqueID": "id-3191",
+      "ioValues": [
+        {
+          "name": "teeth1",
+          "ioValue": 5
+        },
+        {
+          "name": "teeth2",
+          "ioValue": 5
+        },
+        {
+          "name": "pitch",
+          "ioValue": 10
+        }
+      ],
+      "interpreterVersion": 1,
+      "code": "function run(teeth1: number, teeth2: number, pitch: number, internal: boolean = false) {\n  // External mesh: centers separated by (D1 + D2)/2\n  // Internal mesh (ring + pinion): centers separated by (D_ring − D_pinion)/2\n  const sign = internal ? -1 : 1;\n  return ((teeth1 + sign * teeth2) * pitch) / (2 * Math.PI);\n}",
+      "compiledCode": "\"use strict\";\nfunction run(teeth1, teeth2, pitch, internal = false) {\n    // External mesh: centers separated by (D1 + D2)/2\n    // Internal mesh (ring + pinion): centers separated by (D_ring − D_pinion)/2\n    const sign = internal ? -1 : 1;\n    return ((teeth1 + sign * teeth2) * pitch) / (2 * Math.PI);\n}\n"
+    },
+    {
+      "atomType": "Input",
+      "x": 0.025384615384615384,
+      "y": 0.15384615384615385,
+      "uniqueID": "id-3200",
+      "type": "number"
+    },
+    {
+      "atomType": "Equation",
+      "x": 0.3313802083333333,
+      "y": 0.4107142857142857,
+      "uniqueID": "id-3203",
+      "name": "x / 2",
+      "ioValues": [
+        {
+          "name": "x",
+          "ioValue": 10
+        }
+      ],
+      "currentEquation": "x / 2"
+    },
+    {
+      "atomType": "GitHubMolecule",
+      "x": 0.4283854166666667,
+      "y": 0.22023809523809526,
+      "uniqueID": "id-3149",
+      "name": "Involute_Gear",
+      "ioValues": [
+        {
+          "name": "Number_of_Teeth",
+          "ioValue": 20
+        },
+        {
+          "name": "Pitch",
+          "ioValue": 5
+        },
+        {
+          "name": "Thickness",
+          "ioValue": 5
+        },
+        {
+          "name": "Pressure_Angle",
+          "ioValue": 20
+        }
+      ],
+      "topLevel": false,
+      "allAtoms": [
+        {
+          "atomType": "Output",
+          "x": 0.98,
+          "y": 0.5,
+          "uniqueID": "id-3143",
+          "ioValues": [
+            {
+              "name": "number or geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            }
+          ]
+        },
+        {
+          "atomType": "Input",
+          "x": 0.025384615384615384,
+          "y": 0.15384615384615385,
+          "uniqueID": "id-3144",
+          "name": "Number_of_Teeth"
+        },
+        {
+          "atomType": "Input",
+          "x": 0.025384615384615384,
+          "y": 0.24615384615384617,
+          "uniqueID": "id-3145",
+          "name": "Pitch"
+        },
+        {
+          "atomType": "Input",
+          "x": 0.025384615384615384,
+          "y": 0.3384615384615385,
+          "uniqueID": "id-3146",
+          "name": "Thickness"
+        },
+        {
+          "atomType": "Input",
+          "x": 0.025384615384615384,
+          "y": 0.4307692307692308,
+          "uniqueID": "id-3147",
+          "name": "Pressure_Angle"
+        },
+        {
+          "atomType": "Code",
+          "x": 0.458994708994709,
+          "y": 0.5125348189415042,
+          "uniqueID": "id-3148",
+          "ioValues": [
+            {
+              "name": "teeth",
+              "ioValue": 20
+            },
+            {
+              "name": "pitch",
+              "ioValue": 5
+            },
+            {
+              "name": "thickness",
+              "ioValue": 5
+            },
+            {
+              "name": "pressureAngle",
+              "ioValue": 20
+            }
+          ],
+          "interpreterVersion": 1,
+          "code": "/**\n * Involute spur gear with curved (spline) flanks. Each flank is split into\n * FLANK_SEGMENTS sub-splines, with the *exact* involute tangent fed to\n * replicad at every junction as a direction vector.\n *\n * Bug history note: replicad's smoothSplineTo treats a NUMBER tangent as\n * an angle in DEGREES (it multiplies by π/180 internally). To keep the\n * math in radians we pass tangents as unit Point2D direction vectors —\n * those bypass the degree conversion entirely.\n */\nfunction run(\n  teeth: number = 20,\n  pitch: number = 5,\n  thickness: number = 5,\n  pressureAngle: number = 20,\n) {\n  const N = Math.max(3, Math.round(teeth));\n  const m = pitch / Math.PI;\n  const alpha = (pressureAngle * Math.PI) / 180;\n  const pitchR = (N * pitch) / (2 * Math.PI);\n  const addR = pitchR + m;\n  const rootR = Math.max(0.1, pitchR - 1.25 * m);\n  const baseR = pitchR * Math.cos(alpha);\n\n  const inv = (a: number) => Math.tan(a) - a;\n  const invAtPitch = inv(alpha);\n  const halfTooth = Math.PI / (2 * N);\n  const toothAngle = (2 * Math.PI) / N;\n\n  const tMax = Math.acos(Math.min(1, baseR / addR));\n  const useRadialUndercut = rootR < baseR;\n  const tMin = useRadialUndercut ? 0 : Math.acos(Math.min(1, baseR / rootR));\n  const flankBaseR = useRadialUndercut ? rootR : baseR / Math.cos(tMin);\n\n  const FLANK_SEGMENTS = 3;   // sub-splines per flank — bump to 4–5 for tiny tooth counts\n\n  const P = (r: number, a: number): [number, number] => [r * Math.cos(a), r * Math.sin(a)];\n  const involutePt = (t: number, originA: number, orient: number): [number, number] =>\n    P(baseR / Math.cos(t), originA + orient * inv(t));\n  // Unit tangent VECTOR at parameter t. orient = ±1 (left/right flank);\n  // traversalSign = +1 if we're walking with t increasing, -1 if decreasing.\n  const tanVec = (t: number, originA: number, orient: number, traversalSign: number): [number, number] => {\n    const a = originA + orient * (inv(t) + t);\n    return [traversalSign * Math.cos(a), traversalSign * Math.sin(a)];\n  };\n\n  const samples: number[] = [];\n  for (let s = 0; s <= FLANK_SEGMENTS; s++) {\n    samples.push(tMin + (tMax - tMin) * (s / FLANK_SEGMENTS));\n  }\n\n  let pen = replicad.draw(P(rootR, -halfTooth - invAtPitch));\n\n  for (let i = 0; i < N; i++) {\n    const c = i * toothAngle;\n    const leftStart = c - halfTooth - invAtPitch;\n    const rightStart = c + halfTooth + invAtPitch;\n\n    // ── Left flank: tMin → tMax ──\n    if (useRadialUndercut) pen = pen.lineTo(P(baseR, leftStart));\n    for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n      const tA = samples[s - 1], tB = samples[s];\n      pen = pen.smoothSplineTo(involutePt(tB, leftStart, +1), {\n        startTangent: tanVec(tA, leftStart, +1, +1),\n        endTangent: tanVec(tB, leftStart, +1, +1),\n      });\n    }\n\n    // ── Tip chord ──\n    pen = pen.lineTo(involutePt(tMax, rightStart, -1));\n\n    // ── Right flank: tMax → tMin (reversed traversal) ──\n    for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n      const tA = samples[FLANK_SEGMENTS - (s - 1)];\n      const tB = samples[FLANK_SEGMENTS - s];\n      pen = pen.smoothSplineTo(involutePt(tB, rightStart, -1), {\n        startTangent: tanVec(tA, rightStart, -1, -1),\n        endTangent: tanVec(tB, rightStart, -1, -1),\n      });\n    }\n    if (useRadialUndercut) pen = pen.lineTo(P(rootR, rightStart));\n\n    // ── Gap arc to next tooth (close() handles the last one) ──\n    if (i < N - 1) {\n      const arcStartA = useRadialUndercut ? rightStart : (rightStart - inv(tMin));\n      const nextLeft = (i + 1) * toothAngle - halfTooth - invAtPitch;\n      const arcEndA = nextLeft + (useRadialUndercut ? 0 : inv(tMin));\n      const arcMidA = (arcStartA + arcEndA) / 2;\n      pen = pen.threePointsArcTo(P(flankBaseR, arcEndA), P(flankBaseR, arcMidA));\n    }\n  }\n\n  const drawing = pen.close();\n  return drawing.sketchOnPlane().extrude(thickness);\n}",
+          "compiledCode": "\"use strict\";\n/**\n * Involute spur gear with curved (spline) flanks. Each flank is split into\n * FLANK_SEGMENTS sub-splines, with the *exact* involute tangent fed to\n * replicad at every junction as a direction vector.\n *\n * Bug history note: replicad's smoothSplineTo treats a NUMBER tangent as\n * an angle in DEGREES (it multiplies by π/180 internally). To keep the\n * math in radians we pass tangents as unit Point2D direction vectors —\n * those bypass the degree conversion entirely.\n */\nfunction run(teeth = 20, pitch = 5, thickness = 5, pressureAngle = 20) {\n    const N = Math.max(3, Math.round(teeth));\n    const m = pitch / Math.PI;\n    const alpha = (pressureAngle * Math.PI) / 180;\n    const pitchR = (N * pitch) / (2 * Math.PI);\n    const addR = pitchR + m;\n    const rootR = Math.max(0.1, pitchR - 1.25 * m);\n    const baseR = pitchR * Math.cos(alpha);\n    const inv = (a) => Math.tan(a) - a;\n    const invAtPitch = inv(alpha);\n    const halfTooth = Math.PI / (2 * N);\n    const toothAngle = (2 * Math.PI) / N;\n    const tMax = Math.acos(Math.min(1, baseR / addR));\n    const useRadialUndercut = rootR < baseR;\n    const tMin = useRadialUndercut ? 0 : Math.acos(Math.min(1, baseR / rootR));\n    const flankBaseR = useRadialUndercut ? rootR : baseR / Math.cos(tMin);\n    const FLANK_SEGMENTS = 3; // sub-splines per flank — bump to 4–5 for tiny tooth counts\n    const P = (r, a) => [r * Math.cos(a), r * Math.sin(a)];\n    const involutePt = (t, originA, orient) => P(baseR / Math.cos(t), originA + orient * inv(t));\n    // Unit tangent VECTOR at parameter t. orient = ±1 (left/right flank);\n    // traversalSign = +1 if we're walking with t increasing, -1 if decreasing.\n    const tanVec = (t, originA, orient, traversalSign) => {\n        const a = originA + orient * (inv(t) + t);\n        return [traversalSign * Math.cos(a), traversalSign * Math.sin(a)];\n    };\n    const samples = [];\n    for (let s = 0; s <= FLANK_SEGMENTS; s++) {\n        samples.push(tMin + (tMax - tMin) * (s / FLANK_SEGMENTS));\n    }\n    let pen = replicad.draw(P(rootR, -halfTooth - invAtPitch));\n    for (let i = 0; i < N; i++) {\n        const c = i * toothAngle;\n        const leftStart = c - halfTooth - invAtPitch;\n        const rightStart = c + halfTooth + invAtPitch;\n        // ── Left flank: tMin → tMax ──\n        if (useRadialUndercut)\n            pen = pen.lineTo(P(baseR, leftStart));\n        for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n            const tA = samples[s - 1], tB = samples[s];\n            pen = pen.smoothSplineTo(involutePt(tB, leftStart, +1), {\n                startTangent: tanVec(tA, leftStart, +1, +1),\n                endTangent: tanVec(tB, leftStart, +1, +1),\n            });\n        }\n        // ── Tip chord ──\n        pen = pen.lineTo(involutePt(tMax, rightStart, -1));\n        // ── Right flank: tMax → tMin (reversed traversal) ──\n        for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n            const tA = samples[FLANK_SEGMENTS - (s - 1)];\n            const tB = samples[FLANK_SEGMENTS - s];\n            pen = pen.smoothSplineTo(involutePt(tB, rightStart, -1), {\n                startTangent: tanVec(tA, rightStart, -1, -1),\n                endTangent: tanVec(tB, rightStart, -1, -1),\n            });\n        }\n        if (useRadialUndercut)\n            pen = pen.lineTo(P(rootR, rightStart));\n        // ── Gap arc to next tooth (close() handles the last one) ──\n        if (i < N - 1) {\n            const arcStartA = useRadialUndercut ? rightStart : (rightStart - inv(tMin));\n            const nextLeft = (i + 1) * toothAngle - halfTooth - invAtPitch;\n            const arcEndA = nextLeft + (useRadialUndercut ? 0 : inv(tMin));\n            const arcMidA = (arcStartA + arcEndA) / 2;\n            pen = pen.threePointsArcTo(P(flankBaseR, arcEndA), P(flankBaseR, arcMidA));\n        }\n    }\n    const drawing = pen.close();\n    return drawing.sketchOnPlane().extrude(thickness);\n}\n"
+        }
+      ],
+      "allConnectors": [
+        {
+          "ap2Name": "teeth",
+          "ap1ID": "id-3144",
+          "ap2ID": "id-3148"
+        },
+        {
+          "ap2Name": "pitch",
+          "ap1ID": "id-3145",
+          "ap2ID": "id-3148"
+        },
+        {
+          "ap2Name": "thickness",
+          "ap1ID": "id-3146",
+          "ap2ID": "id-3148"
+        },
+        {
+          "ap2Name": "pressureAngle",
+          "ap1ID": "id-3147",
+          "ap2ID": "id-3148"
+        },
+        {
+          "ap2Name": "number or geometry",
+          "ap1ID": "id-3148",
+          "ap2ID": "id-3143"
+        }
+      ],
+      "parentRepo": {
+        "lastFoundGit": "2026-05-06T18:23:39.022Z",
+        "privateRepo": false,
+        "repoName": "Involute_Gear",
+        "dateCreated": "2026-04-21T21:23:02Z",
+        "likes": 0,
+        "readMe": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/README.md?sanitize=true",
+        "yyyy": 2026,
+        "topMoleculeID": "id-709",
+        "githubMoleculesUsed": [],
+        "html_url": "https://github.com/BarbourSmith/Involute_Gear",
+        "topics": [],
+        "parentRepo": null,
+        "forks": 0,
+        "dateModified": "739742",
+        "ranking": 0.6,
+        "searchField": "involute_gear barboursmith generates an involute gear given the number of teeth, tooth ptich, thickness and the pressure angle ",
+        "owner": "BarbourSmith",
+        "description": "Generates an involute gear given the number of teeth, tooth ptich, thickness and the pressure angle",
+        "contentURL": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/project.abundance?sanitize=true",
+        "svgURL": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/project.svg?sanitize=true",
+        "isLocal": false
+      },
+      "unitsKey": "MM",
+      "fileTypeVersion": 1,
+      "lastReloadedFromGithubAt": 1778111562282
+    },
+    {
+      "atomType": "GitHubMolecule",
+      "x": 0.32747395833333337,
+      "y": 0.7619047619047619,
+      "uniqueID": "id-3167",
+      "name": "Involute_Gear",
+      "ioValues": [
+        {
+          "name": "Number_of_Teeth",
+          "ioValue": 20
+        },
+        {
+          "name": "Pitch",
+          "ioValue": 5
+        },
+        {
+          "name": "Thickness",
+          "ioValue": 5
+        },
+        {
+          "name": "Pressure_Angle",
+          "ioValue": 20
+        }
+      ],
+      "topLevel": false,
+      "allAtoms": [
+        {
+          "atomType": "Output",
+          "x": 0.98,
+          "y": 0.5,
+          "uniqueID": "id-3168",
+          "ioValues": [
+            {
+              "name": "number or geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            }
+          ]
+        },
+        {
+          "atomType": "Input",
+          "x": 0.025384615384615384,
+          "y": 0.15384615384615385,
+          "uniqueID": "id-3169",
+          "name": "Number_of_Teeth"
+        },
+        {
+          "atomType": "Input",
+          "x": 0.025384615384615384,
+          "y": 0.24615384615384617,
+          "uniqueID": "id-3170",
+          "name": "Pitch"
+        },
+        {
+          "atomType": "Input",
+          "x": 0.025384615384615384,
+          "y": 0.3384615384615385,
+          "uniqueID": "id-3171",
+          "name": "Thickness"
+        },
+        {
+          "atomType": "Input",
+          "x": 0.025384615384615384,
+          "y": 0.4307692307692308,
+          "uniqueID": "id-3172",
+          "name": "Pressure_Angle"
+        },
+        {
+          "atomType": "Code",
+          "x": 0.458994708994709,
+          "y": 0.5125348189415042,
+          "uniqueID": "id-3173",
+          "ioValues": [
+            {
+              "name": "teeth",
+              "ioValue": 20
+            },
+            {
+              "name": "pitch",
+              "ioValue": 5
+            },
+            {
+              "name": "thickness",
+              "ioValue": 5
+            },
+            {
+              "name": "pressureAngle",
+              "ioValue": 20
+            }
+          ],
+          "interpreterVersion": 1,
+          "code": "/**\n * Involute spur gear with curved (spline) flanks. Each flank is split into\n * FLANK_SEGMENTS sub-splines, with the *exact* involute tangent fed to\n * replicad at every junction as a direction vector.\n *\n * Bug history note: replicad's smoothSplineTo treats a NUMBER tangent as\n * an angle in DEGREES (it multiplies by π/180 internally). To keep the\n * math in radians we pass tangents as unit Point2D direction vectors —\n * those bypass the degree conversion entirely.\n */\nfunction run(\n  teeth: number = 20,\n  pitch: number = 5,\n  thickness: number = 5,\n  pressureAngle: number = 20,\n) {\n  const N = Math.max(3, Math.round(teeth));\n  const m = pitch / Math.PI;\n  const alpha = (pressureAngle * Math.PI) / 180;\n  const pitchR = (N * pitch) / (2 * Math.PI);\n  const addR = pitchR + m;\n  const rootR = Math.max(0.1, pitchR - 1.25 * m);\n  const baseR = pitchR * Math.cos(alpha);\n\n  const inv = (a: number) => Math.tan(a) - a;\n  const invAtPitch = inv(alpha);\n  const halfTooth = Math.PI / (2 * N);\n  const toothAngle = (2 * Math.PI) / N;\n\n  const tMax = Math.acos(Math.min(1, baseR / addR));\n  const useRadialUndercut = rootR < baseR;\n  const tMin = useRadialUndercut ? 0 : Math.acos(Math.min(1, baseR / rootR));\n  const flankBaseR = useRadialUndercut ? rootR : baseR / Math.cos(tMin);\n\n  const FLANK_SEGMENTS = 3;   // sub-splines per flank — bump to 4–5 for tiny tooth counts\n\n  const P = (r: number, a: number): [number, number] => [r * Math.cos(a), r * Math.sin(a)];\n  const involutePt = (t: number, originA: number, orient: number): [number, number] =>\n    P(baseR / Math.cos(t), originA + orient * inv(t));\n  // Unit tangent VECTOR at parameter t. orient = ±1 (left/right flank);\n  // traversalSign = +1 if we're walking with t increasing, -1 if decreasing.\n  const tanVec = (t: number, originA: number, orient: number, traversalSign: number): [number, number] => {\n    const a = originA + orient * (inv(t) + t);\n    return [traversalSign * Math.cos(a), traversalSign * Math.sin(a)];\n  };\n\n  const samples: number[] = [];\n  for (let s = 0; s <= FLANK_SEGMENTS; s++) {\n    samples.push(tMin + (tMax - tMin) * (s / FLANK_SEGMENTS));\n  }\n\n  let pen = replicad.draw(P(rootR, -halfTooth - invAtPitch));\n\n  for (let i = 0; i < N; i++) {\n    const c = i * toothAngle;\n    const leftStart = c - halfTooth - invAtPitch;\n    const rightStart = c + halfTooth + invAtPitch;\n\n    // ── Left flank: tMin → tMax ──\n    if (useRadialUndercut) pen = pen.lineTo(P(baseR, leftStart));\n    for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n      const tA = samples[s - 1], tB = samples[s];\n      pen = pen.smoothSplineTo(involutePt(tB, leftStart, +1), {\n        startTangent: tanVec(tA, leftStart, +1, +1),\n        endTangent: tanVec(tB, leftStart, +1, +1),\n      });\n    }\n\n    // ── Tip chord ──\n    pen = pen.lineTo(involutePt(tMax, rightStart, -1));\n\n    // ── Right flank: tMax → tMin (reversed traversal) ──\n    for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n      const tA = samples[FLANK_SEGMENTS - (s - 1)];\n      const tB = samples[FLANK_SEGMENTS - s];\n      pen = pen.smoothSplineTo(involutePt(tB, rightStart, -1), {\n        startTangent: tanVec(tA, rightStart, -1, -1),\n        endTangent: tanVec(tB, rightStart, -1, -1),\n      });\n    }\n    if (useRadialUndercut) pen = pen.lineTo(P(rootR, rightStart));\n\n    // ── Gap arc to next tooth (close() handles the last one) ──\n    if (i < N - 1) {\n      const arcStartA = useRadialUndercut ? rightStart : (rightStart - inv(tMin));\n      const nextLeft = (i + 1) * toothAngle - halfTooth - invAtPitch;\n      const arcEndA = nextLeft + (useRadialUndercut ? 0 : inv(tMin));\n      const arcMidA = (arcStartA + arcEndA) / 2;\n      pen = pen.threePointsArcTo(P(flankBaseR, arcEndA), P(flankBaseR, arcMidA));\n    }\n  }\n\n  const drawing = pen.close();\n  return drawing.sketchOnPlane().extrude(thickness);\n}",
+          "compiledCode": "\"use strict\";\n/**\n * Involute spur gear with curved (spline) flanks. Each flank is split into\n * FLANK_SEGMENTS sub-splines, with the *exact* involute tangent fed to\n * replicad at every junction as a direction vector.\n *\n * Bug history note: replicad's smoothSplineTo treats a NUMBER tangent as\n * an angle in DEGREES (it multiplies by π/180 internally). To keep the\n * math in radians we pass tangents as unit Point2D direction vectors —\n * those bypass the degree conversion entirely.\n */\nfunction run(teeth = 20, pitch = 5, thickness = 5, pressureAngle = 20) {\n    const N = Math.max(3, Math.round(teeth));\n    const m = pitch / Math.PI;\n    const alpha = (pressureAngle * Math.PI) / 180;\n    const pitchR = (N * pitch) / (2 * Math.PI);\n    const addR = pitchR + m;\n    const rootR = Math.max(0.1, pitchR - 1.25 * m);\n    const baseR = pitchR * Math.cos(alpha);\n    const inv = (a) => Math.tan(a) - a;\n    const invAtPitch = inv(alpha);\n    const halfTooth = Math.PI / (2 * N);\n    const toothAngle = (2 * Math.PI) / N;\n    const tMax = Math.acos(Math.min(1, baseR / addR));\n    const useRadialUndercut = rootR < baseR;\n    const tMin = useRadialUndercut ? 0 : Math.acos(Math.min(1, baseR / rootR));\n    const flankBaseR = useRadialUndercut ? rootR : baseR / Math.cos(tMin);\n    const FLANK_SEGMENTS = 3; // sub-splines per flank — bump to 4–5 for tiny tooth counts\n    const P = (r, a) => [r * Math.cos(a), r * Math.sin(a)];\n    const involutePt = (t, originA, orient) => P(baseR / Math.cos(t), originA + orient * inv(t));\n    // Unit tangent VECTOR at parameter t. orient = ±1 (left/right flank);\n    // traversalSign = +1 if we're walking with t increasing, -1 if decreasing.\n    const tanVec = (t, originA, orient, traversalSign) => {\n        const a = originA + orient * (inv(t) + t);\n        return [traversalSign * Math.cos(a), traversalSign * Math.sin(a)];\n    };\n    const samples = [];\n    for (let s = 0; s <= FLANK_SEGMENTS; s++) {\n        samples.push(tMin + (tMax - tMin) * (s / FLANK_SEGMENTS));\n    }\n    let pen = replicad.draw(P(rootR, -halfTooth - invAtPitch));\n    for (let i = 0; i < N; i++) {\n        const c = i * toothAngle;\n        const leftStart = c - halfTooth - invAtPitch;\n        const rightStart = c + halfTooth + invAtPitch;\n        // ── Left flank: tMin → tMax ──\n        if (useRadialUndercut)\n            pen = pen.lineTo(P(baseR, leftStart));\n        for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n            const tA = samples[s - 1], tB = samples[s];\n            pen = pen.smoothSplineTo(involutePt(tB, leftStart, +1), {\n                startTangent: tanVec(tA, leftStart, +1, +1),\n                endTangent: tanVec(tB, leftStart, +1, +1),\n            });\n        }\n        // ── Tip chord ──\n        pen = pen.lineTo(involutePt(tMax, rightStart, -1));\n        // ── Right flank: tMax → tMin (reversed traversal) ──\n        for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n            const tA = samples[FLANK_SEGMENTS - (s - 1)];\n            const tB = samples[FLANK_SEGMENTS - s];\n            pen = pen.smoothSplineTo(involutePt(tB, rightStart, -1), {\n                startTangent: tanVec(tA, rightStart, -1, -1),\n                endTangent: tanVec(tB, rightStart, -1, -1),\n            });\n        }\n        if (useRadialUndercut)\n            pen = pen.lineTo(P(rootR, rightStart));\n        // ── Gap arc to next tooth (close() handles the last one) ──\n        if (i < N - 1) {\n            const arcStartA = useRadialUndercut ? rightStart : (rightStart - inv(tMin));\n            const nextLeft = (i + 1) * toothAngle - halfTooth - invAtPitch;\n            const arcEndA = nextLeft + (useRadialUndercut ? 0 : inv(tMin));\n            const arcMidA = (arcStartA + arcEndA) / 2;\n            pen = pen.threePointsArcTo(P(flankBaseR, arcEndA), P(flankBaseR, arcMidA));\n        }\n    }\n    const drawing = pen.close();\n    return drawing.sketchOnPlane().extrude(thickness);\n}\n"
+        }
+      ],
+      "allConnectors": [
+        {
+          "ap2Name": "teeth",
+          "ap1ID": "id-3169",
+          "ap2ID": "id-3173"
+        },
+        {
+          "ap2Name": "pitch",
+          "ap1ID": "id-3170",
+          "ap2ID": "id-3173"
+        },
+        {
+          "ap2Name": "thickness",
+          "ap1ID": "id-3171",
+          "ap2ID": "id-3173"
+        },
+        {
+          "ap2Name": "pressureAngle",
+          "ap1ID": "id-3172",
+          "ap2ID": "id-3173"
+        },
+        {
+          "ap2Name": "number or geometry",
+          "ap1ID": "id-3173",
+          "ap2ID": "id-3168"
+        }
+      ],
+      "parentRepo": {
+        "lastFoundGit": "2026-05-06T18:23:39.022Z",
+        "privateRepo": false,
+        "repoName": "Involute_Gear",
+        "dateCreated": "2026-04-21T21:23:02Z",
+        "likes": 0,
+        "readMe": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/README.md?sanitize=true",
+        "yyyy": 2026,
+        "topMoleculeID": "id-709",
+        "githubMoleculesUsed": [],
+        "html_url": "https://github.com/BarbourSmith/Involute_Gear",
+        "topics": [],
+        "parentRepo": null,
+        "forks": 0,
+        "dateModified": "739742",
+        "ranking": 0.6,
+        "searchField": "involute_gear barboursmith generates an involute gear given the number of teeth, tooth ptich, thickness and the pressure angle ",
+        "owner": "BarbourSmith",
+        "description": "Generates an involute gear given the number of teeth, tooth ptich, thickness and the pressure angle",
+        "contentURL": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/project.abundance?sanitize=true",
+        "svgURL": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/project.svg?sanitize=true",
+        "isLocal": false
+      },
+      "unitsKey": "MM",
+      "fileTypeVersion": 1,
+      "lastReloadedFromGithubAt": 1778111562282
+    },
+    {
       "atomType": "GitHubMolecule",
       "x": 0.13541666666666666,
       "y": 0.26785714285714285,
@@ -1876,346 +2216,45 @@
       "lastReloadedFromGithubAt": 1777952561678
     },
     {
-      "atomType": "GitHubMolecule",
-      "x": 0.4283854166666667,
-      "y": 0.22023809523809526,
-      "uniqueID": "id-3149",
-      "name": "Involute_Gear",
+      "atomType": "Move",
+      "x": 0.59765625,
+      "y": 0.2916666666666667,
+      "uniqueID": "id-3476",
       "ioValues": [
         {
-          "name": "Number_of_Teeth",
-          "ioValue": 20
+          "name": "geometry",
+          "ioValue": "__GEOMETRY_INPUT__"
         },
         {
-          "name": "Pitch",
-          "ioValue": 5
+          "name": "xDist",
+          "ioValue": 15.915494309189533
         },
         {
-          "name": "Thickness",
-          "ioValue": 5
+          "name": "yDist",
+          "ioValue": 0
         },
         {
-          "name": "Pressure_Angle",
-          "ioValue": 20
+          "name": "zDist",
+          "ioValue": 0
         }
-      ],
-      "topLevel": false,
-      "allAtoms": [
-        {
-          "atomType": "Output",
-          "x": 0.98,
-          "y": 0.5,
-          "uniqueID": "id-3143",
-          "ioValues": [
-            {
-              "name": "number or geometry",
-              "ioValue": "__GEOMETRY_INPUT__"
-            }
-          ]
-        },
-        {
-          "atomType": "Input",
-          "x": 0.025384615384615384,
-          "y": 0.15384615384615385,
-          "uniqueID": "id-3144",
-          "name": "Number_of_Teeth"
-        },
-        {
-          "atomType": "Input",
-          "x": 0.025384615384615384,
-          "y": 0.24615384615384617,
-          "uniqueID": "id-3145",
-          "name": "Pitch"
-        },
-        {
-          "atomType": "Input",
-          "x": 0.025384615384615384,
-          "y": 0.3384615384615385,
-          "uniqueID": "id-3146",
-          "name": "Thickness"
-        },
-        {
-          "atomType": "Input",
-          "x": 0.025384615384615384,
-          "y": 0.4307692307692308,
-          "uniqueID": "id-3147",
-          "name": "Pressure_Angle"
-        },
-        {
-          "atomType": "Code",
-          "x": 0.458994708994709,
-          "y": 0.5125348189415042,
-          "uniqueID": "id-3148",
-          "ioValues": [
-            {
-              "name": "teeth",
-              "ioValue": 20
-            },
-            {
-              "name": "pitch",
-              "ioValue": 5
-            },
-            {
-              "name": "thickness",
-              "ioValue": 5
-            },
-            {
-              "name": "pressureAngle",
-              "ioValue": 20
-            }
-          ],
-          "interpreterVersion": 1,
-          "code": "/**\n * Involute spur gear with curved (spline) flanks. Each flank is split into\n * FLANK_SEGMENTS sub-splines, with the *exact* involute tangent fed to\n * replicad at every junction as a direction vector.\n *\n * Bug history note: replicad's smoothSplineTo treats a NUMBER tangent as\n * an angle in DEGREES (it multiplies by π/180 internally). To keep the\n * math in radians we pass tangents as unit Point2D direction vectors —\n * those bypass the degree conversion entirely.\n */\nfunction run(\n  teeth: number = 20,\n  pitch: number = 5,\n  thickness: number = 5,\n  pressureAngle: number = 20,\n) {\n  const N = Math.max(3, Math.round(teeth));\n  const m = pitch / Math.PI;\n  const alpha = (pressureAngle * Math.PI) / 180;\n  const pitchR = (N * pitch) / (2 * Math.PI);\n  const addR = pitchR + m;\n  const rootR = Math.max(0.1, pitchR - 1.25 * m);\n  const baseR = pitchR * Math.cos(alpha);\n\n  const inv = (a: number) => Math.tan(a) - a;\n  const invAtPitch = inv(alpha);\n  const halfTooth = Math.PI / (2 * N);\n  const toothAngle = (2 * Math.PI) / N;\n\n  const tMax = Math.acos(Math.min(1, baseR / addR));\n  const useRadialUndercut = rootR < baseR;\n  const tMin = useRadialUndercut ? 0 : Math.acos(Math.min(1, baseR / rootR));\n  const flankBaseR = useRadialUndercut ? rootR : baseR / Math.cos(tMin);\n\n  const FLANK_SEGMENTS = 3;   // sub-splines per flank — bump to 4–5 for tiny tooth counts\n\n  const P = (r: number, a: number): [number, number] => [r * Math.cos(a), r * Math.sin(a)];\n  const involutePt = (t: number, originA: number, orient: number): [number, number] =>\n    P(baseR / Math.cos(t), originA + orient * inv(t));\n  // Unit tangent VECTOR at parameter t. orient = ±1 (left/right flank);\n  // traversalSign = +1 if we're walking with t increasing, -1 if decreasing.\n  const tanVec = (t: number, originA: number, orient: number, traversalSign: number): [number, number] => {\n    const a = originA + orient * (inv(t) + t);\n    return [traversalSign * Math.cos(a), traversalSign * Math.sin(a)];\n  };\n\n  const samples: number[] = [];\n  for (let s = 0; s <= FLANK_SEGMENTS; s++) {\n    samples.push(tMin + (tMax - tMin) * (s / FLANK_SEGMENTS));\n  }\n\n  let pen = replicad.draw(P(rootR, -halfTooth - invAtPitch));\n\n  for (let i = 0; i < N; i++) {\n    const c = i * toothAngle;\n    const leftStart = c - halfTooth - invAtPitch;\n    const rightStart = c + halfTooth + invAtPitch;\n\n    // ── Left flank: tMin → tMax ──\n    if (useRadialUndercut) pen = pen.lineTo(P(baseR, leftStart));\n    for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n      const tA = samples[s - 1], tB = samples[s];\n      pen = pen.smoothSplineTo(involutePt(tB, leftStart, +1), {\n        startTangent: tanVec(tA, leftStart, +1, +1),\n        endTangent: tanVec(tB, leftStart, +1, +1),\n      });\n    }\n\n    // ── Tip chord ──\n    pen = pen.lineTo(involutePt(tMax, rightStart, -1));\n\n    // ── Right flank: tMax → tMin (reversed traversal) ──\n    for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n      const tA = samples[FLANK_SEGMENTS - (s - 1)];\n      const tB = samples[FLANK_SEGMENTS - s];\n      pen = pen.smoothSplineTo(involutePt(tB, rightStart, -1), {\n        startTangent: tanVec(tA, rightStart, -1, -1),\n        endTangent: tanVec(tB, rightStart, -1, -1),\n      });\n    }\n    if (useRadialUndercut) pen = pen.lineTo(P(rootR, rightStart));\n\n    // ── Gap arc to next tooth (close() handles the last one) ──\n    if (i < N - 1) {\n      const arcStartA = useRadialUndercut ? rightStart : (rightStart - inv(tMin));\n      const nextLeft = (i + 1) * toothAngle - halfTooth - invAtPitch;\n      const arcEndA = nextLeft + (useRadialUndercut ? 0 : inv(tMin));\n      const arcMidA = (arcStartA + arcEndA) / 2;\n      pen = pen.threePointsArcTo(P(flankBaseR, arcEndA), P(flankBaseR, arcMidA));\n    }\n  }\n\n  const drawing = pen.close();\n  return drawing.sketchOnPlane().extrude(thickness);\n}",
-          "compiledCode": "\"use strict\";\n/**\n * Involute spur gear with curved (spline) flanks. Each flank is split into\n * FLANK_SEGMENTS sub-splines, with the *exact* involute tangent fed to\n * replicad at every junction as a direction vector.\n *\n * Bug history note: replicad's smoothSplineTo treats a NUMBER tangent as\n * an angle in DEGREES (it multiplies by π/180 internally). To keep the\n * math in radians we pass tangents as unit Point2D direction vectors —\n * those bypass the degree conversion entirely.\n */\nfunction run(teeth = 20, pitch = 5, thickness = 5, pressureAngle = 20) {\n    const N = Math.max(3, Math.round(teeth));\n    const m = pitch / Math.PI;\n    const alpha = (pressureAngle * Math.PI) / 180;\n    const pitchR = (N * pitch) / (2 * Math.PI);\n    const addR = pitchR + m;\n    const rootR = Math.max(0.1, pitchR - 1.25 * m);\n    const baseR = pitchR * Math.cos(alpha);\n    const inv = (a) => Math.tan(a) - a;\n    const invAtPitch = inv(alpha);\n    const halfTooth = Math.PI / (2 * N);\n    const toothAngle = (2 * Math.PI) / N;\n    const tMax = Math.acos(Math.min(1, baseR / addR));\n    const useRadialUndercut = rootR < baseR;\n    const tMin = useRadialUndercut ? 0 : Math.acos(Math.min(1, baseR / rootR));\n    const flankBaseR = useRadialUndercut ? rootR : baseR / Math.cos(tMin);\n    const FLANK_SEGMENTS = 3; // sub-splines per flank — bump to 4–5 for tiny tooth counts\n    const P = (r, a) => [r * Math.cos(a), r * Math.sin(a)];\n    const involutePt = (t, originA, orient) => P(baseR / Math.cos(t), originA + orient * inv(t));\n    // Unit tangent VECTOR at parameter t. orient = ±1 (left/right flank);\n    // traversalSign = +1 if we're walking with t increasing, -1 if decreasing.\n    const tanVec = (t, originA, orient, traversalSign) => {\n        const a = originA + orient * (inv(t) + t);\n        return [traversalSign * Math.cos(a), traversalSign * Math.sin(a)];\n    };\n    const samples = [];\n    for (let s = 0; s <= FLANK_SEGMENTS; s++) {\n        samples.push(tMin + (tMax - tMin) * (s / FLANK_SEGMENTS));\n    }\n    let pen = replicad.draw(P(rootR, -halfTooth - invAtPitch));\n    for (let i = 0; i < N; i++) {\n        const c = i * toothAngle;\n        const leftStart = c - halfTooth - invAtPitch;\n        const rightStart = c + halfTooth + invAtPitch;\n        // ── Left flank: tMin → tMax ──\n        if (useRadialUndercut)\n            pen = pen.lineTo(P(baseR, leftStart));\n        for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n            const tA = samples[s - 1], tB = samples[s];\n            pen = pen.smoothSplineTo(involutePt(tB, leftStart, +1), {\n                startTangent: tanVec(tA, leftStart, +1, +1),\n                endTangent: tanVec(tB, leftStart, +1, +1),\n            });\n        }\n        // ── Tip chord ──\n        pen = pen.lineTo(involutePt(tMax, rightStart, -1));\n        // ── Right flank: tMax → tMin (reversed traversal) ──\n        for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n            const tA = samples[FLANK_SEGMENTS - (s - 1)];\n            const tB = samples[FLANK_SEGMENTS - s];\n            pen = pen.smoothSplineTo(involutePt(tB, rightStart, -1), {\n                startTangent: tanVec(tA, rightStart, -1, -1),\n                endTangent: tanVec(tB, rightStart, -1, -1),\n            });\n        }\n        if (useRadialUndercut)\n            pen = pen.lineTo(P(rootR, rightStart));\n        // ── Gap arc to next tooth (close() handles the last one) ──\n        if (i < N - 1) {\n            const arcStartA = useRadialUndercut ? rightStart : (rightStart - inv(tMin));\n            const nextLeft = (i + 1) * toothAngle - halfTooth - invAtPitch;\n            const arcEndA = nextLeft + (useRadialUndercut ? 0 : inv(tMin));\n            const arcMidA = (arcStartA + arcEndA) / 2;\n            pen = pen.threePointsArcTo(P(flankBaseR, arcEndA), P(flankBaseR, arcMidA));\n        }\n    }\n    const drawing = pen.close();\n    return drawing.sketchOnPlane().extrude(thickness);\n}\n"
-        }
-      ],
-      "allConnectors": [
-        {
-          "ap2Name": "teeth",
-          "ap1ID": "id-3144",
-          "ap2ID": "id-3148"
-        },
-        {
-          "ap2Name": "pitch",
-          "ap1ID": "id-3145",
-          "ap2ID": "id-3148"
-        },
-        {
-          "ap2Name": "thickness",
-          "ap1ID": "id-3146",
-          "ap2ID": "id-3148"
-        },
-        {
-          "ap2Name": "pressureAngle",
-          "ap1ID": "id-3147",
-          "ap2ID": "id-3148"
-        },
-        {
-          "ap2Name": "number or geometry",
-          "ap1ID": "id-3148",
-          "ap2ID": "id-3143"
-        }
-      ],
-      "parentRepo": {
-        "lastFoundGit": "2026-05-06T18:23:39.022Z",
-        "privateRepo": false,
-        "repoName": "Involute_Gear",
-        "dateCreated": "2026-04-21T21:23:02Z",
-        "likes": 0,
-        "readMe": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/README.md?sanitize=true",
-        "yyyy": 2026,
-        "topMoleculeID": "id-709",
-        "githubMoleculesUsed": [],
-        "html_url": "https://github.com/BarbourSmith/Involute_Gear",
-        "topics": [],
-        "parentRepo": null,
-        "forks": 0,
-        "dateModified": "739742",
-        "ranking": 0.6,
-        "searchField": "involute_gear barboursmith generates an involute gear given the number of teeth, tooth ptich, thickness and the pressure angle ",
-        "owner": "BarbourSmith",
-        "description": "Generates an involute gear given the number of teeth, tooth ptich, thickness and the pressure angle",
-        "contentURL": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/project.abundance?sanitize=true",
-        "svgURL": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/project.svg?sanitize=true",
-        "isLocal": false
-      },
-      "unitsKey": "MM",
-      "fileTypeVersion": 1,
-      "lastReloadedFromGithubAt": 1778111562282
-    },
-    {
-      "atomType": "GitHubMolecule",
-      "x": 0.32747395833333337,
-      "y": 0.7619047619047619,
-      "uniqueID": "id-3167",
-      "name": "Involute_Gear",
-      "ioValues": [
-        {
-          "name": "Number_of_Teeth",
-          "ioValue": 20
-        },
-        {
-          "name": "Pitch",
-          "ioValue": 5
-        },
-        {
-          "name": "Thickness",
-          "ioValue": 5
-        },
-        {
-          "name": "Pressure_Angle",
-          "ioValue": 20
-        }
-      ],
-      "topLevel": false,
-      "allAtoms": [
-        {
-          "atomType": "Output",
-          "x": 0.98,
-          "y": 0.5,
-          "uniqueID": "id-3168",
-          "ioValues": [
-            {
-              "name": "number or geometry",
-              "ioValue": "__GEOMETRY_INPUT__"
-            }
-          ]
-        },
-        {
-          "atomType": "Input",
-          "x": 0.025384615384615384,
-          "y": 0.15384615384615385,
-          "uniqueID": "id-3169",
-          "name": "Number_of_Teeth"
-        },
-        {
-          "atomType": "Input",
-          "x": 0.025384615384615384,
-          "y": 0.24615384615384617,
-          "uniqueID": "id-3170",
-          "name": "Pitch"
-        },
-        {
-          "atomType": "Input",
-          "x": 0.025384615384615384,
-          "y": 0.3384615384615385,
-          "uniqueID": "id-3171",
-          "name": "Thickness"
-        },
-        {
-          "atomType": "Input",
-          "x": 0.025384615384615384,
-          "y": 0.4307692307692308,
-          "uniqueID": "id-3172",
-          "name": "Pressure_Angle"
-        },
-        {
-          "atomType": "Code",
-          "x": 0.458994708994709,
-          "y": 0.5125348189415042,
-          "uniqueID": "id-3173",
-          "ioValues": [
-            {
-              "name": "teeth",
-              "ioValue": 20
-            },
-            {
-              "name": "pitch",
-              "ioValue": 5
-            },
-            {
-              "name": "thickness",
-              "ioValue": 5
-            },
-            {
-              "name": "pressureAngle",
-              "ioValue": 20
-            }
-          ],
-          "interpreterVersion": 1,
-          "code": "/**\n * Involute spur gear with curved (spline) flanks. Each flank is split into\n * FLANK_SEGMENTS sub-splines, with the *exact* involute tangent fed to\n * replicad at every junction as a direction vector.\n *\n * Bug history note: replicad's smoothSplineTo treats a NUMBER tangent as\n * an angle in DEGREES (it multiplies by π/180 internally). To keep the\n * math in radians we pass tangents as unit Point2D direction vectors —\n * those bypass the degree conversion entirely.\n */\nfunction run(\n  teeth: number = 20,\n  pitch: number = 5,\n  thickness: number = 5,\n  pressureAngle: number = 20,\n) {\n  const N = Math.max(3, Math.round(teeth));\n  const m = pitch / Math.PI;\n  const alpha = (pressureAngle * Math.PI) / 180;\n  const pitchR = (N * pitch) / (2 * Math.PI);\n  const addR = pitchR + m;\n  const rootR = Math.max(0.1, pitchR - 1.25 * m);\n  const baseR = pitchR * Math.cos(alpha);\n\n  const inv = (a: number) => Math.tan(a) - a;\n  const invAtPitch = inv(alpha);\n  const halfTooth = Math.PI / (2 * N);\n  const toothAngle = (2 * Math.PI) / N;\n\n  const tMax = Math.acos(Math.min(1, baseR / addR));\n  const useRadialUndercut = rootR < baseR;\n  const tMin = useRadialUndercut ? 0 : Math.acos(Math.min(1, baseR / rootR));\n  const flankBaseR = useRadialUndercut ? rootR : baseR / Math.cos(tMin);\n\n  const FLANK_SEGMENTS = 3;   // sub-splines per flank — bump to 4–5 for tiny tooth counts\n\n  const P = (r: number, a: number): [number, number] => [r * Math.cos(a), r * Math.sin(a)];\n  const involutePt = (t: number, originA: number, orient: number): [number, number] =>\n    P(baseR / Math.cos(t), originA + orient * inv(t));\n  // Unit tangent VECTOR at parameter t. orient = ±1 (left/right flank);\n  // traversalSign = +1 if we're walking with t increasing, -1 if decreasing.\n  const tanVec = (t: number, originA: number, orient: number, traversalSign: number): [number, number] => {\n    const a = originA + orient * (inv(t) + t);\n    return [traversalSign * Math.cos(a), traversalSign * Math.sin(a)];\n  };\n\n  const samples: number[] = [];\n  for (let s = 0; s <= FLANK_SEGMENTS; s++) {\n    samples.push(tMin + (tMax - tMin) * (s / FLANK_SEGMENTS));\n  }\n\n  let pen = replicad.draw(P(rootR, -halfTooth - invAtPitch));\n\n  for (let i = 0; i < N; i++) {\n    const c = i * toothAngle;\n    const leftStart = c - halfTooth - invAtPitch;\n    const rightStart = c + halfTooth + invAtPitch;\n\n    // ── Left flank: tMin → tMax ──\n    if (useRadialUndercut) pen = pen.lineTo(P(baseR, leftStart));\n    for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n      const tA = samples[s - 1], tB = samples[s];\n      pen = pen.smoothSplineTo(involutePt(tB, leftStart, +1), {\n        startTangent: tanVec(tA, leftStart, +1, +1),\n        endTangent: tanVec(tB, leftStart, +1, +1),\n      });\n    }\n\n    // ── Tip chord ──\n    pen = pen.lineTo(involutePt(tMax, rightStart, -1));\n\n    // ── Right flank: tMax → tMin (reversed traversal) ──\n    for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n      const tA = samples[FLANK_SEGMENTS - (s - 1)];\n      const tB = samples[FLANK_SEGMENTS - s];\n      pen = pen.smoothSplineTo(involutePt(tB, rightStart, -1), {\n        startTangent: tanVec(tA, rightStart, -1, -1),\n        endTangent: tanVec(tB, rightStart, -1, -1),\n      });\n    }\n    if (useRadialUndercut) pen = pen.lineTo(P(rootR, rightStart));\n\n    // ── Gap arc to next tooth (close() handles the last one) ──\n    if (i < N - 1) {\n      const arcStartA = useRadialUndercut ? rightStart : (rightStart - inv(tMin));\n      const nextLeft = (i + 1) * toothAngle - halfTooth - invAtPitch;\n      const arcEndA = nextLeft + (useRadialUndercut ? 0 : inv(tMin));\n      const arcMidA = (arcStartA + arcEndA) / 2;\n      pen = pen.threePointsArcTo(P(flankBaseR, arcEndA), P(flankBaseR, arcMidA));\n    }\n  }\n\n  const drawing = pen.close();\n  return drawing.sketchOnPlane().extrude(thickness);\n}",
-          "compiledCode": "\"use strict\";\n/**\n * Involute spur gear with curved (spline) flanks. Each flank is split into\n * FLANK_SEGMENTS sub-splines, with the *exact* involute tangent fed to\n * replicad at every junction as a direction vector.\n *\n * Bug history note: replicad's smoothSplineTo treats a NUMBER tangent as\n * an angle in DEGREES (it multiplies by π/180 internally). To keep the\n * math in radians we pass tangents as unit Point2D direction vectors —\n * those bypass the degree conversion entirely.\n */\nfunction run(teeth = 20, pitch = 5, thickness = 5, pressureAngle = 20) {\n    const N = Math.max(3, Math.round(teeth));\n    const m = pitch / Math.PI;\n    const alpha = (pressureAngle * Math.PI) / 180;\n    const pitchR = (N * pitch) / (2 * Math.PI);\n    const addR = pitchR + m;\n    const rootR = Math.max(0.1, pitchR - 1.25 * m);\n    const baseR = pitchR * Math.cos(alpha);\n    const inv = (a) => Math.tan(a) - a;\n    const invAtPitch = inv(alpha);\n    const halfTooth = Math.PI / (2 * N);\n    const toothAngle = (2 * Math.PI) / N;\n    const tMax = Math.acos(Math.min(1, baseR / addR));\n    const useRadialUndercut = rootR < baseR;\n    const tMin = useRadialUndercut ? 0 : Math.acos(Math.min(1, baseR / rootR));\n    const flankBaseR = useRadialUndercut ? rootR : baseR / Math.cos(tMin);\n    const FLANK_SEGMENTS = 3; // sub-splines per flank — bump to 4–5 for tiny tooth counts\n    const P = (r, a) => [r * Math.cos(a), r * Math.sin(a)];\n    const involutePt = (t, originA, orient) => P(baseR / Math.cos(t), originA + orient * inv(t));\n    // Unit tangent VECTOR at parameter t. orient = ±1 (left/right flank);\n    // traversalSign = +1 if we're walking with t increasing, -1 if decreasing.\n    const tanVec = (t, originA, orient, traversalSign) => {\n        const a = originA + orient * (inv(t) + t);\n        return [traversalSign * Math.cos(a), traversalSign * Math.sin(a)];\n    };\n    const samples = [];\n    for (let s = 0; s <= FLANK_SEGMENTS; s++) {\n        samples.push(tMin + (tMax - tMin) * (s / FLANK_SEGMENTS));\n    }\n    let pen = replicad.draw(P(rootR, -halfTooth - invAtPitch));\n    for (let i = 0; i < N; i++) {\n        const c = i * toothAngle;\n        const leftStart = c - halfTooth - invAtPitch;\n        const rightStart = c + halfTooth + invAtPitch;\n        // ── Left flank: tMin → tMax ──\n        if (useRadialUndercut)\n            pen = pen.lineTo(P(baseR, leftStart));\n        for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n            const tA = samples[s - 1], tB = samples[s];\n            pen = pen.smoothSplineTo(involutePt(tB, leftStart, +1), {\n                startTangent: tanVec(tA, leftStart, +1, +1),\n                endTangent: tanVec(tB, leftStart, +1, +1),\n            });\n        }\n        // ── Tip chord ──\n        pen = pen.lineTo(involutePt(tMax, rightStart, -1));\n        // ── Right flank: tMax → tMin (reversed traversal) ──\n        for (let s = 1; s <= FLANK_SEGMENTS; s++) {\n            const tA = samples[FLANK_SEGMENTS - (s - 1)];\n            const tB = samples[FLANK_SEGMENTS - s];\n            pen = pen.smoothSplineTo(involutePt(tB, rightStart, -1), {\n                startTangent: tanVec(tA, rightStart, -1, -1),\n                endTangent: tanVec(tB, rightStart, -1, -1),\n            });\n        }\n        if (useRadialUndercut)\n            pen = pen.lineTo(P(rootR, rightStart));\n        // ── Gap arc to next tooth (close() handles the last one) ──\n        if (i < N - 1) {\n            const arcStartA = useRadialUndercut ? rightStart : (rightStart - inv(tMin));\n            const nextLeft = (i + 1) * toothAngle - halfTooth - invAtPitch;\n            const arcEndA = nextLeft + (useRadialUndercut ? 0 : inv(tMin));\n            const arcMidA = (arcStartA + arcEndA) / 2;\n            pen = pen.threePointsArcTo(P(flankBaseR, arcEndA), P(flankBaseR, arcMidA));\n        }\n    }\n    const drawing = pen.close();\n    return drawing.sketchOnPlane().extrude(thickness);\n}\n"
-        }
-      ],
-      "allConnectors": [
-        {
-          "ap2Name": "teeth",
-          "ap1ID": "id-3169",
-          "ap2ID": "id-3173"
-        },
-        {
-          "ap2Name": "pitch",
-          "ap1ID": "id-3170",
-          "ap2ID": "id-3173"
-        },
-        {
-          "ap2Name": "thickness",
-          "ap1ID": "id-3171",
-          "ap2ID": "id-3173"
-        },
-        {
-          "ap2Name": "pressureAngle",
-          "ap1ID": "id-3172",
-          "ap2ID": "id-3173"
-        },
-        {
-          "ap2Name": "number or geometry",
-          "ap1ID": "id-3173",
-          "ap2ID": "id-3168"
-        }
-      ],
-      "parentRepo": {
-        "lastFoundGit": "2026-05-06T18:23:39.022Z",
-        "privateRepo": false,
-        "repoName": "Involute_Gear",
-        "dateCreated": "2026-04-21T21:23:02Z",
-        "likes": 0,
-        "readMe": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/README.md?sanitize=true",
-        "yyyy": 2026,
-        "topMoleculeID": "id-709",
-        "githubMoleculesUsed": [],
-        "html_url": "https://github.com/BarbourSmith/Involute_Gear",
-        "topics": [],
-        "parentRepo": null,
-        "forks": 0,
-        "dateModified": "739742",
-        "ranking": 0.6,
-        "searchField": "involute_gear barboursmith generates an involute gear given the number of teeth, tooth ptich, thickness and the pressure angle ",
-        "owner": "BarbourSmith",
-        "description": "Generates an involute gear given the number of teeth, tooth ptich, thickness and the pressure angle",
-        "contentURL": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/project.abundance?sanitize=true",
-        "svgURL": "https://raw.githubusercontent.com/BarbourSmith/Involute_Gear/master/project.svg?sanitize=true",
-        "isLocal": false
-      },
-      "unitsKey": "MM",
-      "fileTypeVersion": 1,
-      "lastReloadedFromGithubAt": 1778111562282
+      ]
     },
     {
       "atomType": "Code",
-      "x": 0.5221354166666666,
-      "y": 0.511904761904762,
-      "uniqueID": "id-3191",
-      "ioValues": [
-        {
-          "name": "teeth1",
-          "ioValue": 5
-        },
-        {
-          "name": "teeth2",
-          "ioValue": 5
-        },
-        {
-          "name": "pitch",
-          "ioValue": 10
-        }
-      ],
+      "x": 0.44856770833333337,
+      "y": 0.6994047619047619,
+      "uniqueID": "id-3482",
       "interpreterVersion": 1,
-      "code": "function run(teeth1: number, teeth2: number, pitch: number, internal: boolean = false) {\n  // External mesh: centers separated by (D1 + D2)/2\n  // Internal mesh (ring + pinion): centers separated by (D_ring − D_pinion)/2\n  const sign = internal ? -1 : 1;\n  return ((teeth1 + sign * teeth2) * pitch) / (2 * Math.PI);\n}",
-      "compiledCode": "\"use strict\";\nfunction run(teeth1, teeth2, pitch, internal = false) {\n    // External mesh: centers separated by (D1 + D2)/2\n    // Internal mesh (ring + pinion): centers separated by (D_ring − D_pinion)/2\n    const sign = internal ? -1 : 1;\n    return ((teeth1 + sign * teeth2) * pitch) / (2 * Math.PI);\n}\n"
-    },
-    {
-      "atomType": "Input",
-      "x": 0.025384615384615384,
-      "y": 0.36904761904761907,
-      "uniqueID": "id-3200"
-    },
-    {
-      "atomType": "Equation",
-      "x": 0.3313802083333333,
-      "y": 0.4107142857142857,
-      "uniqueID": "id-3203",
-      "name": "x / 2",
-      "ioValues": [
-        {
-          "name": "x",
-          "ioValue": 10
-        }
-      ],
-      "currentEquation": "x / 2"
+      "code": "function run() {\n\n  return new Assembly({geometry: replicad.makeCircle(6)})\n\n  return [replicad.makeCylinder(1,10), replicad.makeSphere(3)]\n}",
+      "compiledCode": "\"use strict\";\nfunction run() {\n    return new Assembly({ geometry: replicad.makeCircle(6) });\n    return [replicad.makeCylinder(1, 10), replicad.makeSphere(3)];\n}\n"
     }
   ],
   "allConnectors": [
+    {
+      "ap2Name": "xDist",
+      "ap1ID": "id-3191",
+      "ap2ID": "id-3476"
+    },
     {
       "ap2Name": "x",
       "ap1ID": "id-3200",
@@ -2235,6 +2274,11 @@
       "ap2Name": "teeth2",
       "ap1ID": "id-3203",
       "ap2ID": "id-3191"
+    },
+    {
+      "ap2Name": "geometry",
+      "ap1ID": "id-3149",
+      "ap2ID": "id-3476"
     }
   ],
   "unitsKey": "Inches",
