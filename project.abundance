@@ -2245,8 +2245,8 @@
       "y": 0.6994047619047619,
       "uniqueID": "id-3482",
       "interpreterVersion": 1,
-      "code": "function run() {\n\n  return new Assembly({geometry: replicad.makeCircle(6)})\n\n  return [replicad.makeCylinder(1,10), replicad.makeSphere(3)]\n}",
-      "compiledCode": "\"use strict\";\nfunction run() {\n    return new Assembly({ geometry: replicad.makeCircle(6) });\n    return [replicad.makeCylinder(1, 10), replicad.makeSphere(3)];\n}\n"
+      "code": "function run() {\n\n  return new Assembly({geometry: replicad.makeSphere(6), tags: [\"blah\"]})\n\n  return [replicad.makeCylinder(1,10), replicad.makeSphere(3)]\n}",
+      "compiledCode": "\"use strict\";\nfunction run() {\n    return new Assembly({ geometry: replicad.makeSphere(6), tags: [\"blah\"] });\n    return [replicad.makeCylinder(1, 10), replicad.makeSphere(3)];\n}\n"
     }
   ],
   "allConnectors": [
